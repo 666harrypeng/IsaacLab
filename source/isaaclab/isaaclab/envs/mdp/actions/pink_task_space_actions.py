@@ -58,6 +58,9 @@ class PinkInverseKinematicsAction(ActionTerm):
         # Initialize action tensors
         self._raw_actions = torch.zeros(self.num_envs, self.action_dim, device=self.device)
         self._processed_actions = torch.zeros_like(self._raw_actions)
+        self._target_hand_joint_positions = torch.zeros(
+            self.num_envs, self.hand_joint_dim, device=self.device
+        )
 
         # PhysX Articulation Floating joint indices offset from IsaacLab Articulation joint indices
         self._physx_floating_joint_indices_offset = 6
@@ -197,7 +200,11 @@ class PinkInverseKinematicsAction(ActionTerm):
         self._raw_actions[:] = actions
 
         # Extract hand joint positions directly (no cloning needed)
-        self._target_hand_joint_positions = actions[:, -self.hand_joint_dim :]
+        if self.hand_joint_dim > 0:
+            self._target_hand_joint_positions = actions[:, -self.hand_joint_dim :]
+        else:
+            # Ensure we preserve a correctly shaped zero-column tensor when no hand joints exist
+            self._target_hand_joint_positions = actions.new_zeros((self.num_envs, 0))
 
         # Get base link frame transformation
         self.base_link_frame_in_world_rf = self._get_base_link_frame_transform()
